@@ -21,7 +21,7 @@ Contract.make {
             contentType applicationJson()
         }
         body([
-            id      : $(producer(regex('[0-9]+')), consumer(1)),
+            id      : $(producer(anyPositiveInt()), consumer(1)),
             nombre  : "Juan",
             apellido: "Perez"
         ])

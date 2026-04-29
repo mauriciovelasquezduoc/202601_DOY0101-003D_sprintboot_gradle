@@ -39,6 +39,14 @@ jobs:
         run: ./gradlew clean check jacocoTestReport -Dnet.bytebuddy.experimental=true
         # check ejecuta: test → jacocoTestReport → jacocoTestCoverageVerification (≥80%)
 
+      - name: Publicar reporte contractTest como artefacto (diagnóstico)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-test-report
+          path: build/reports/tests/contractTest/
+          retention-days: 7
+
       - name: Publicar reporte de cobertura JaCoCo como artefacto
         uses: actions/upload-artifact@v4
         if: always()

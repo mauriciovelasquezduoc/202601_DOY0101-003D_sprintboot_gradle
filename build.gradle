@@ -1,0 +1,117 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+    id "org.sonarqube" version "6.0.1.5171"
+    id 'info.solidsoft.pitest' version '1.19.0-rc.2'
+    id 'org.springframework.cloud.contract' version '4.2.1'
+}
+
+group = 'cl.duocuc.alumnos'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.projectlombok:lombok'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    runtimeOnly 'com.h2database:h2'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // Cucumber - tests de aceptación
+    testImplementation 'io.cucumber:cucumber-java:7.20.1'
+    testImplementation 'io.cucumber:cucumber-spring:7.20.1'
+    testImplementation 'io.cucumber:cucumber-junit-platform-engine:7.20.1'
+    testImplementation 'org.junit.platform:junit-platform-suite:1.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-suite-engine:1.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+
+    // Spring Cloud Contract - tests de contrato
+    testImplementation 'org.springframework.cloud:spring-cloud-starter-contract-verifier:4.2.1'
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '-Dnet.bytebuddy.experimental=true'
+    finalizedBy jacocoTestReport
+}
+
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                value   = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+        rule {
+            limit {
+                counter = 'BRANCH'
+                value   = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+// Orden: test → jacocoTestReport → jacocoTestCoverageVerification
+jacocoTestCoverageVerification.dependsOn jacocoTestReport
+check.dependsOn jacocoTestCoverageVerification
+
+sonar {
+    properties {
+        property "sonar.projectKey", "alumnos-app"
+        property "sonar.organization", "demo"
+        property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+        // Quality Gate: el paso sonar espera el resultado antes de continuar el pipeline
+        property "sonar.qualitygate.wait", "true"
+        property "sonar.qualitygate.timeout", "300"
+    }
+}
+
+pitest {
+    targetClasses         = ['cl.duocuc.alumnos.*']
+    targetTests           = ['cl.duocuc.alumnos.*']
+    junit5PluginVersion   = '1.2.1'
+    mutationThreshold     = 80
+    coverageThreshold     = 80
+    outputFormats         = ['HTML', 'XML']
+    timestampedReports    = false
+    jvmArgs               = ['-Dnet.bytebuddy.experimental=true']
+    threads               = 2
+}
+
+contracts {
+    testFramework         = org.springframework.cloud.contract.verifier.config.TestFramework.JUNIT5
+    baseClassForTests     = 'cl.duocuc.alumnos.contract.AlumnoContractBase'
+    contractsDslDir       = file('src/test/resources/contracts')
+}

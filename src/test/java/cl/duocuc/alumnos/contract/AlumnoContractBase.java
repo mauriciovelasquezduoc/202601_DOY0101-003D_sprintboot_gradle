@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
 
@@ -18,15 +21,15 @@ import static org.mockito.Mockito.when;
 
 /**
  * Clase base para los tests de contrato generados por Spring Cloud Contract.
- * Configura el contexto MockMvc con los mocks necesarios para que los contratos
- * puedan verificarse sin levantar el servidor completo.
+ * Configura RestAssuredMockMvc con CSRF deshabilitado para que los contratos
+ * POST/PUT/DELETE puedan ejecutarse sin token CSRF.
  */
 @WebMvcTest(AlumnoController.class)
 @WithMockUser
 public abstract class AlumnoContractBase {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebApplicationContext context;
 
     @MockBean
     private AlumnoService service;
@@ -39,6 +42,13 @@ public abstract class AlumnoContractBase {
         // Stub: POST /alumnos → alumno creado con id=1
         when(service.crear(any(Alumno.class)))
                 .thenReturn(new Alumno(1L, "Juan", "Perez"));
+
+        // Configurar MockMvc con Spring Security pero sin CSRF
+        // (los contratos no envían token CSRF por diseño)
+        MockMvc mockMvc = MockMvcBuilders
+                .webAppContextSetup(context)
+                .apply(SecurityMockMvcConfigurers.springSecurity())
+                .build();
 
         RestAssuredMockMvc.mockMvc(mockMvc);
     }

@@ -52,7 +52,9 @@ jobs:
         if: always()
         with:
           name: jacoco-coverage-report
-          path: build/reports/jacoco/test/html/
+          path: |
+            build/reports/jacoco/test/html/
+            build/reports/jacoco/test/jacocoTestReport.xml
           retention-days: 7
 
       - name: Publicar resultados de tests como artefacto
@@ -99,6 +101,14 @@ jobs:
 
       - name: Compilar para análisis (sin tests)
         run: ./gradlew clean assemble -Dnet.bytebuddy.experimental=true
+
+      # ── Descargar reporte JaCoCo del job anterior ─────────────────────────
+      - name: Descargar reporte JaCoCo
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: build/reports/jacoco/test/
+        continue-on-error: true  # no falla si el artefacto no existe aún
 
       # ── SAST: SonarCloud ──────────────────────────────────────────────────
       - name: Análisis SonarCloud (SAST)

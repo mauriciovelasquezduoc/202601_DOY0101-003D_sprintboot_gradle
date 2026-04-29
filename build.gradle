@@ -13,7 +13,7 @@ version = '1.0.0'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -49,6 +49,12 @@ test {
     useJUnitPlatform()
     jvmArgs '-Dnet.bytebuddy.experimental=true'
     finalizedBy jacocoTestReport
+}
+
+// El task contractTest generado por Spring Cloud Contract también necesita
+// el flag de Byte Buddy para funcionar con Java 21+
+tasks.withType(Test).configureEach {
+    jvmArgs '-Dnet.bytebuddy.experimental=true'
 }
 
 jacoco {

@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.4.13'
+    id 'org.springframework.boot' version '3.5.3'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
     id "org.sonarqube" version "7.1.0.6387"
@@ -157,9 +157,9 @@ rewrite {
 
 dependencies {
     // Recetas OpenRewrite (solo en tiempo de build, no en runtime)
-    rewrite 'org.openrewrite.recipe:rewrite-migrate-java:3.12.0'
-    rewrite 'org.openrewrite.recipe:rewrite-spring:6.9.0'
-    rewrite 'org.openrewrite.recipe:rewrite-static-analysis:2.11.0'
+    rewrite 'org.openrewrite.recipe:rewrite-migrate-java:3.31.0'
+    rewrite 'org.openrewrite.recipe:rewrite-spring:6.13.0'
+    rewrite 'org.openrewrite.recipe:rewrite-static-analysis:2.15.0'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ spotless {
 // Los reportes quedan en: build/reports/pmd/
 // ─────────────────────────────────────────────────────────────────────────────
 pmd {
-    toolVersion = '7.13.0'
+    toolVersion = '7.16.0'
     // Falla el build si PMD encuentra violaciones
     ignoreFailures = false
     // Conjuntos de reglas activos

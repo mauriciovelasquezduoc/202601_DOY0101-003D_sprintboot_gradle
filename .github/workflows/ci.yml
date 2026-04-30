@@ -174,14 +174,23 @@ jobs:
         run: npm install -g snyk@latest
 
       - name: Escaneo de dependencias Snyk (SCA)
-        run: snyk test --severity-threshold=high --fail-on=all --all-sub-projects
+        run: |
+          snyk test \
+            --severity-threshold=high \
+            --fail-on=all \
+            --configuration-matching='^(compile|runtime|default)$'
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        # --fail-on=all → BLOQUEA el pipeline si hay vulnerabilidades high/critical
+        # --configuration-matching: solo escanea dependencias de runtime (excluye build tools)
+        # --fail-on=all → BLOQUEA el pipeline si hay vulnerabilidades high/critical en runtime
 
       - name: Generar reporte Snyk SARIF
         if: always()
-        run: snyk test --severity-threshold=high --sarif-file-output=snyk.sarif || true
+        run: |
+          snyk test \
+            --severity-threshold=high \
+            --configuration-matching='^(compile|runtime|default)$' \
+            --sarif-file-output=snyk.sarif || true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 

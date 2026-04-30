@@ -1,45 +1,42 @@
 package cl.duocuc.alumnos.infrastructure.controller;
 
-import cl.duocuc.alumnos.application.AlumnoService;
-import cl.duocuc.alumnos.domain.Alumno;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import cl.duocuc.alumnos.application.AlumnoService;
+import cl.duocuc.alumnos.domain.Alumno;
 
 @WebMvcTest(AlumnoController.class)
 @WithMockUser
 class AlumnoControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @MockBean
-    private AlumnoService service;
+    @MockitoBean private AlumnoService service;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private ObjectMapper objectMapper;
 
     @Test
     void listar_retorna200ConLista() throws Exception {
-        when(service.listar()).thenReturn(List.of(
-                new Alumno(1L, "Juan", "Pérez"),
-                new Alumno(2L, "Ana", "López")
-        ));
+        when(service.listar())
+                .thenReturn(
+                        List.of(new Alumno(1L, "Juan", "Pérez"), new Alumno(2L, "Ana", "López")));
 
         mockMvc.perform(get("/alumnos"))
                 .andExpect(status().isOk())
@@ -54,10 +51,11 @@ class AlumnoControllerTest {
         Alumno created = new Alumno(3L, "Carlos", "Soto");
         when(service.crear(any(Alumno.class))).thenReturn(created);
 
-        mockMvc.perform(post("/alumnos")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(input)))
+        mockMvc.perform(
+                        post("/alumnos")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(input)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(3))
                 .andExpect(jsonPath("$.nombre").value("Carlos"));
@@ -69,10 +67,11 @@ class AlumnoControllerTest {
         Alumno updated = new Alumno(4L, "Luis", "Mora");
         when(service.actualizar(eq(4L), any(Alumno.class))).thenReturn(updated);
 
-        mockMvc.perform(put("/alumnos/4")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(input)))
+        mockMvc.perform(
+                        put("/alumnos/4")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(input)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(4))
                 .andExpect(jsonPath("$.nombre").value("Luis"));
@@ -82,18 +81,16 @@ class AlumnoControllerTest {
     void eliminar_retorna200() throws Exception {
         doNothing().when(service).eliminar(5L);
 
-        mockMvc.perform(delete("/alumnos/5").with(csrf()))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete("/alumnos/5").with(csrf())).andExpect(status().isOk());
 
         verify(service, times(1)).eliminar(5L);
     }
 
     @Test
     void exportar_retornaCSV() throws Exception {
-        when(service.listar()).thenReturn(List.of(
-                new Alumno(1L, "Juan", "Pérez"),
-                new Alumno(2L, "Ana", "López")
-        ));
+        when(service.listar())
+                .thenReturn(
+                        List.of(new Alumno(1L, "Juan", "Pérez"), new Alumno(2L, "Ana", "López")));
 
         mockMvc.perform(get("/alumnos/export"))
                 .andExpect(status().isOk())
@@ -114,10 +111,11 @@ class AlumnoControllerTest {
         String csv = "Juan,Pérez\nAna,López";
         when(service.crear(any(Alumno.class))).thenReturn(new Alumno(1L, "Juan", "Pérez"));
 
-        mockMvc.perform(post("/alumnos/import")
-                        .with(csrf())
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content(csv))
+        mockMvc.perform(
+                        post("/alumnos/import")
+                                .with(csrf())
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .content(csv))
                 .andExpect(status().isOk());
 
         verify(service, times(2)).crear(any(Alumno.class));
@@ -129,10 +127,11 @@ class AlumnoControllerTest {
         String csv = "SoloNombre\nJuan,Pérez";
         when(service.crear(any(Alumno.class))).thenReturn(new Alumno(1L, "Juan", "Pérez"));
 
-        mockMvc.perform(post("/alumnos/import")
-                        .with(csrf())
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content(csv))
+        mockMvc.perform(
+                        post("/alumnos/import")
+                                .with(csrf())
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .content(csv))
                 .andExpect(status().isOk());
 
         verify(service, times(1)).crear(any(Alumno.class));

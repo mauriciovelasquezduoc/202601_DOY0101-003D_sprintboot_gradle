@@ -1,20 +1,23 @@
 # Alumnos API — version00 (Gradle)
 
-REST API para gestión de alumnos construida con Spring Boot 3, siguiendo arquitectura hexagonal y una pirámide de tests completa.
+REST API para gestión de alumnos construida con Spring Boot 3, siguiendo **arquitectura limpia (Clean Architecture)** y una pirámide de tests completa.
 
 ---
 
 ## Tabla de contenidos
 
 - [Stack tecnológico](#stack-tecnológico)
-- [Arquitectura](#arquitectura)
+- [Arquitectura limpia](#arquitectura-limpia)
+- [Diseño del sistema](#diseño-del-sistema)
 - [Requisitos previos](#requisitos-previos)
 - [Configuración local](#configuración-local)
+- [Calidad de código](#calidad-de-código)
 - [Operación con Docker](#operación-con-docker)
 - [API Reference](#api-reference)
 - [Pirámide de tests](#pirámide-de-tests)
-- [Cobertura y calidad](#cobertura-y-calidad)
+- [Cobertura y análisis estático](#cobertura-y-análisis-estático)
 - [CI/CD](#cicd)
+- [Orquestación con Kubernetes](#orquestación-con-kubernetes)
 
 ---
 
@@ -37,37 +40,166 @@ REST API para gestión de alumnos construida con Spring Boot 3, siguiendo arquit
 | Tests de contrato | Spring Cloud Contract | 4.2.1 |
 | Cobertura | JaCoCo | 0.8.13 |
 | Mutation testing | PIT (Pitest) | 1.19.x |
-| Análisis estático | SonarQube / SonarCloud | — |
+| Refactoring automático | OpenRewrite | 6.30.0 |
+| Formato de código | Spotless + Google Java Format | 7.0.4 / 1.25.2 |
+| Análisis estático | PMD | 7.13.0 |
+| Análisis SAST | SonarCloud | — |
 | Contenedores | Docker + Docker Compose | — |
 
 ---
 
-## Arquitectura
+## Arquitectura limpia
 
-El proyecto sigue **arquitectura hexagonal (ports & adapters)**:
+El proyecto implementa **Clean Architecture** (también conocida como arquitectura hexagonal o ports & adapters). El principio central es la **Regla de Dependencia**: las capas internas no conocen nada de las capas externas.
+
+### Capas y responsabilidades
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        INFRASTRUCTURE                               │
+│   (Frameworks, DB, HTTP, Spring, JPA, Swagger)                      │
+│                                                                     │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                      APPLICATION                            │   │
+│   │   (Casos de uso, orquestación, reglas de aplicación)        │   │
+│   │                                                             │   │
+│   │   ┌─────────────────────────────────────────────────────┐   │   │
+│   │   │                    DOMAIN                           │   │   │
+│   │   │   (Entidades, reglas de negocio puras)              │   │   │
+│   │   │   Sin dependencias externas                         │   │   │
+│   │   └─────────────────────────────────────────────────────┘   │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Mapeo al código fuente
 
 ```
 src/main/java/cl/duocuc/alumnos/
-├── domain/                     # Entidades de dominio puras (sin dependencias)
-│   └── Alumno.java
-├── application/                # Casos de uso / lógica de negocio
-│   └── AlumnoService.java
-├── config/                     # Configuración transversal
-│   ├── GlobalExceptionHandler.java
-│   └── SecurityConfig.java
-└── infrastructure/             # Adaptadores (entrada y salida)
-    ├── controller/             # Adaptador de entrada: REST
-    │   └── AlumnoController.java
-    ├── entity/                 # Adaptador de salida: JPA
-    │   └── AlumnoEntity.java
-    ├── mapper/                 # Conversión dominio ↔ infraestructura
-    │   └── AlumnoMapper.java
-    ├── repository/             # Puerto de salida: Spring Data
-    │   └── AlumnoRepository.java
-    └── config/                 # Configuración de infraestructura
-        ├── OpenApiConfig.java
-        └── WebConfig.java
+│
+├── domain/                         ← CAPA DE DOMINIO (núcleo)
+│   └── Alumno.java                   Entidad pura: solo datos y reglas de negocio.
+│                                     Sin anotaciones de Spring, JPA ni Lombok.
+│
+├── application/                    ← CAPA DE APLICACIÓN (casos de uso)
+│   └── AlumnoService.java            Orquesta el dominio. Depende solo de interfaces
+│                                     (puertos). No conoce HTTP ni JPA.
+│
+├── config/                         ← CONFIGURACIÓN TRANSVERSAL
+│   ├── GlobalExceptionHandler.java   Manejo centralizado de errores HTTP.
+│   └── SecurityConfig.java           Configuración de Spring Security.
+│
+└── infrastructure/                 ← CAPA DE INFRAESTRUCTURA (adaptadores)
+    │
+    ├── controller/                   ADAPTADOR DE ENTRADA (driving)
+    │   └── AlumnoController.java     Recibe HTTP → llama al servicio → retorna JSON.
+    │
+    ├── entity/                       ADAPTADOR DE SALIDA (driven)
+    │   └── AlumnoEntity.java         Representación JPA de Alumno para la BD.
+    │
+    ├── mapper/                       TRADUCTOR entre capas
+    │   └── AlumnoMapper.java         Convierte Alumno (dominio) ↔ AlumnoEntity (JPA).
+    │
+    ├── repository/                   PUERTO DE SALIDA
+    │   └── AlumnoRepository.java     Interfaz Spring Data — la implementación la provee JPA.
+    │
+    └── config/                       CONFIGURACIÓN DE INFRAESTRUCTURA
+        ├── OpenApiConfig.java        Metadatos de la documentación OpenAPI.
+        └── WebConfig.java            Configuración de recursos estáticos (ReDoc).
 ```
+
+### Flujo de una petición
+
+```
+HTTP Request
+    │
+    ▼
+AlumnoController          ← Infrastructure (adaptador entrada)
+    │  llama a
+    ▼
+AlumnoService             ← Application (caso de uso)
+    │  usa puerto
+    ▼
+AlumnoRepository          ← Puerto de salida (interfaz)
+    │  implementado por
+    ▼
+Spring Data JPA           ← Infrastructure (adaptador salida)
+    │  persiste en
+    ▼
+H2 / Base de datos
+```
+
+### Regla de dependencia
+
+| Capa | Puede depender de | No puede depender de |
+|---|---|---|
+| `domain` | Nada externo | `application`, `infrastructure`, Spring |
+| `application` | `domain` | `infrastructure`, Spring MVC, JPA |
+| `infrastructure` | `application`, `domain` | — (puede usar todo) |
+
+---
+
+## Diseño del sistema
+
+### Diagrama de componentes
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         Cliente HTTP                             │
+│              (curl / Swagger UI / Cucumber / Tests)              │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │ HTTP/REST
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    Spring Boot Application                       │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  SecurityConfig          GlobalExceptionHandler             │ │
+│  │  (Spring Security)       (HTTP 4xx/5xx unificados)          │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ┌──────────────────────┐    ┌──────────────────────────────┐   │
+│  │  AlumnoController    │───▶│  AlumnoService               │   │
+│  │  @RestController     │    │  @Service                    │   │
+│  │  GET  /alumnos       │    │  listar()                    │   │
+│  │  POST /alumnos       │    │  crear()                     │   │
+│  │  PUT  /alumnos/{id}  │    │  actualizar()                │   │
+│  │  DELETE /alumnos/{id}│    │  eliminar()                  │   │
+│  │  GET  /alumnos/export│    │  exportar()                  │   │
+│  │  POST /alumnos/import│    │  importar()                  │   │
+│  └──────────────────────┘    └──────────────┬───────────────┘   │
+│                                             │                   │
+│  ┌──────────────────────┐    ┌──────────────▼───────────────┐   │
+│  │  AlumnoMapper        │◀──▶│  AlumnoRepository            │   │
+│  │  domain ↔ entity     │    │  JpaRepository<AlumnoEntity> │   │
+│  └──────────────────────┘    └──────────────┬───────────────┘   │
+│                                             │                   │
+│                              ┌──────────────▼───────────────┐   │
+│                              │  H2 In-Memory Database       │   │
+│                              │  (dev/test: jdbc:h2:mem:)    │   │
+│                              └──────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Modelo de datos
+
+```
+┌─────────────────────────────┐
+│         alumno_entity       │
+├─────────────────────────────┤
+│ id        BIGINT  PK AUTO   │
+│ nombre    VARCHAR(255)      │
+│ apellido  VARCHAR(255)      │
+└─────────────────────────────┘
+```
+
+### Perfiles de configuración
+
+| Perfil | Base de datos | Log level | Uso |
+|---|---|---|---|
+| `default` | H2 in-memory | INFO | Desarrollo rápido |
+| `dev` | H2 in-memory + H2 Console | DEBUG | Desarrollo con consola BD |
+| `prod` | H2 in-memory | WARN | Simulación producción |
 
 ---
 
@@ -131,12 +263,85 @@ curl http://localhost:8080/alumnos
 ### 6. Perfiles disponibles
 
 ```bash
-# Perfil de desarrollo
+# Perfil de desarrollo (activa H2 Console y logs DEBUG)
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 
 # Perfil de producción
 ./gradlew bootRun --args='--spring.profiles.active=prod'
 ```
+
+---
+
+## Calidad de código
+
+El proyecto incluye tres herramientas que se ejecutan **antes de compilar**, en el job `code-quality` del pipeline CI. Esto garantiza que el código llega limpio a SonarCloud.
+
+```
+code-quality → build-and-test → security (SonarCloud + Snyk) → docker → deploy
+```
+
+### OpenRewrite — Refactoring automático
+
+Aplica recetas de modernización y limpieza de código de forma automática.
+
+**Recetas activas:**
+
+| Receta | Qué hace |
+|---|---|
+| `UpgradeToJava21` | Moderniza sintaxis a Java 21 (records, pattern matching, etc.) |
+| `UpgradeSpringBoot_3_4` | Migra APIs deprecadas de Spring Boot |
+| `CommonStaticAnalysis` | Elimina código muerto y patrones problemáticos |
+| `UnnecessaryThrows` | Limpia declaraciones `throws` innecesarias |
+| `SimplifyBooleanExpression` | Simplifica condiciones booleanas redundantes |
+| `RemoveUnusedImports` | Elimina imports sin usar |
+
+```bash
+# Ver qué cambiaría (modo CI — no modifica archivos)
+./gradlew rewriteDryRun
+
+# Aplicar cambios automáticamente (modo local)
+./gradlew rewriteRun
+```
+
+### Spotless — Formato de código
+
+Garantiza formato consistente usando **Google Java Format** con estilo AOSP (4 espacios).
+
+```bash
+# Verificar formato (modo CI — falla si hay diferencias)
+./gradlew spotlessCheck
+
+# Aplicar formato automáticamente (modo local)
+./gradlew spotlessApply
+```
+
+### PMD — Análisis estático de reglas
+
+Valida reglas de calidad, seguridad y buenas prácticas. El ruleset está en `config/pmd/ruleset.xml`.
+
+**Categorías activas:** `bestpractices`, `errorprone`, `performance`, `security`, `design`, `codestyle`
+
+```bash
+# Analizar código principal (modo CI — falla si hay violaciones)
+./gradlew pmdMain pmdTest
+
+# Ver reporte HTML
+open build/reports/pmd/main.html
+```
+
+### Task combinado
+
+```bash
+# Ejecuta los 3 checks en orden (equivalente al job CI)
+./gradlew codeQuality
+```
+
+> **Flujo recomendado antes de hacer push:**
+> ```bash
+> ./gradlew rewriteRun spotlessApply   # aplica correcciones automáticas
+> ./gradlew codeQuality                # verifica que todo pasa
+> ./gradlew clean check                # tests + cobertura
+> ```
 
 ---
 
@@ -154,54 +359,28 @@ Características de seguridad:
 - Healthcheck integrado
 - Sin herramientas de build en la imagen final
 
-#### Construir la imagen manualmente
-
 ```bash
+# Construir la imagen
 docker build -t alumnos-app:latest .
-```
 
-#### Ejecutar el contenedor manualmente
-
-```bash
+# Ejecutar el contenedor
 docker run -d \
   --name alumnos-app \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
   alumnos-app:latest
-```
-
-#### Verificar el contenedor
-
-```bash
-# Ver logs
-docker logs alumnos-app -f
 
 # Ver estado del healthcheck
 docker inspect --format='{{.State.Health.Status}}' alumnos-app
-
-# Detener y eliminar
-docker stop alumnos-app && docker rm alumnos-app
 ```
 
 ### Docker Compose
 
-La forma recomendada para levantar el entorno completo:
-
 ```bash
-# Levantar en background
-docker compose up -d
-
-# Ver logs en tiempo real
-docker compose logs -f
-
-# Ver estado de los servicios
-docker compose ps
-
-# Detener y eliminar contenedores
-docker compose down
-
-# Detener, eliminar contenedores y volúmenes
-docker compose down -v
+docker compose up -d        # levantar en background
+docker compose logs -f      # ver logs en tiempo real
+docker compose ps           # ver estado de servicios
+docker compose down -v      # detener y limpiar volúmenes
 ```
 
 > La aplicación estará disponible en `http://localhost:8080` una vez que el healthcheck reporte `healthy` (~30 segundos).
@@ -252,7 +431,8 @@ curl http://localhost:8080/alumnos/export
 # Importar CSV
 curl -X POST http://localhost:8080/alumnos/import \
   -H "Content-Type: text/plain" \
-  -d $'Juan,Pérez\nAna,López'
+  -d 'Juan,Pérez
+Ana,López'
 ```
 
 ---
@@ -296,41 +476,27 @@ Tests rápidos, sin Spring context, con mocks de Mockito.
 | `GlobalExceptionHandlerTest` | 2 | Handler de excepciones retorna HTTP 500 con mensaje |
 
 ```bash
-# Ejecutar solo unit tests
 ./gradlew test --tests "cl.duocuc.alumnos.AlumnoServiceTest"
-./gradlew test --tests "cl.duocuc.alumnos.infrastructure.mapper.AlumnoMapperTest"
 ```
 
 ### Capa 2 — Repository Tests (6 tests)
 
-Tests con `@DataJpaTest` — levanta solo el contexto JPA con H2 en memoria. Verifica que las operaciones de base de datos funcionan correctamente.
+Tests con `@DataJpaTest` — levanta solo el contexto JPA con H2 en memoria.
 
 | Clase de test | Tests | Qué verifica |
 |---|---|---|
 | `AlumnoRepositoryTest` | 6 | save, findAll, findById, deleteById, update contra H2 real |
 
-```bash
-./gradlew test --tests "cl.duocuc.alumnos.infrastructure.repository.AlumnoRepositoryTest"
-```
-
 ### Capa 3 — Integration Tests (10 tests)
-
-Tests con contexto Spring parcial o completo.
 
 | Clase de test | Anotación | Tests | Qué verifica |
 |---|---|---|---|
-| `AlumnoControllerTest` | `@WebMvcTest` | 8 | Todos los endpoints REST con MockMvc y mocks del servicio |
+| `AlumnoControllerTest` | `@WebMvcTest` | 8 | Todos los endpoints REST con MockMvc |
 | `DemoApplicationTest` | `@SpringBootTest` | 2 | Contexto completo levanta sin errores |
-
-```bash
-./gradlew test --tests "cl.duocuc.alumnos.infrastructure.controller.AlumnoControllerTest"
-```
 
 ### Capa 4 — Acceptance Tests / BDD (7 escenarios)
 
-Tests de aceptación escritos en Gherkin con Cucumber. Levantan el servidor completo en un puerto aleatorio y hacen llamadas HTTP reales con `TestRestTemplate`.
-
-**Feature:** `src/test/resources/features/alumnos.feature`
+Tests escritos en Gherkin con Cucumber. Levantan el servidor completo y hacen llamadas HTTP reales.
 
 | Escenario | Qué verifica |
 |---|---|
@@ -342,17 +508,9 @@ Tests de aceptación escritos en Gherkin con Cucumber. Levantan el servidor comp
 | Exportar alumnos a CSV | GET /alumnos/export retorna formato CSV |
 | Importar alumnos desde CSV | POST /alumnos/import procesa el CSV |
 
-> La BD se limpia antes de cada escenario con `cleanup.sql` para garantizar aislamiento.
-
-```bash
-./gradlew test --tests "cl.duocuc.alumnos.cucumber.CucumberRunnerTest"
-```
-
 ### Capa 5 — Contract Tests (3 contratos)
 
-Tests de contrato con Spring Cloud Contract (producer side). Verifican que la API cumple los contratos definidos, garantizando compatibilidad con los consumidores.
-
-**Contratos:** `src/test/resources/contracts/alumnos/`
+Tests de contrato con Spring Cloud Contract (producer side).
 
 | Contrato | Qué verifica |
 |---|---|
@@ -361,77 +519,72 @@ Tests de contrato con Spring Cloud Contract (producer side). Verifican que la AP
 | `exportar_csv.groovy` | GET /alumnos/export retorna texto plano |
 
 ```bash
-# Generar y ejecutar tests de contrato
-./gradlew generateContractTests contractTest
-```
-
-### Ejecutar todos los tests
-
-```bash
-# Todos los tests + reporte de cobertura
+# Todos los tests + cobertura
 ./gradlew clean test jacocoTestReport
 
-# Build completo incluyendo contratos y verificación de cobertura
+# Build completo incluyendo contratos
 ./gradlew clean generateContractTests contractTest test jacocoTestReport check
 ```
 
 ---
 
-## Cobertura y calidad
+## Cobertura y análisis estático
 
-### JaCoCo
+### JaCoCo — Cobertura de código
 
 El build falla si la cobertura baja del **80%** en instrucciones y ramas.
 
 ```bash
-# Generar reporte HTML
 ./gradlew jacocoTestReport
-
-# Ver reporte
 open build/reports/jacoco/test/html/index.html
 ```
 
-### Mutation Testing (PIT)
+### PIT — Mutation Testing
 
-Verifica la calidad real de los tests mutando el código fuente. El build falla si el mutation score baja del **80%**.
+Verifica la calidad real de los tests mutando el código. El build falla si el mutation score baja del **80%**.
 
 ```bash
 ./gradlew pitest
-
-# Ver reporte
 open build/reports/pitest/index.html
 ```
 
-### SonarQube / SonarCloud
+### SonarCloud — SAST
+
+Análisis de seguridad, bugs y code smells. El pipeline bloquea si el Quality Gate falla.
 
 ```bash
-# Requiere token configurado en sonar.token
-./gradlew sonar -Dsonar.token=<tu-token>
+./gradlew sonar \
+  -Dsonar.token=<tu-token> \
+  -Dsonar.organization=<tu-org>
 ```
 
 ---
 
 ## CI/CD
 
-El proyecto incluye configuración de GitHub Actions en `.github/workflows/ci.yml`.
-
-El pipeline está dividido en **4 jobs secuenciales** que garantizan trazabilidad completa desde el desarrollo hasta la producción:
+El pipeline tiene **5 jobs secuenciales**. Cada job solo corre si el anterior pasa.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│  JOB 0: Code Quality                                            │
+│  ├── OpenRewrite dry-run  (falla si hay recetas pendientes)     │
+│  ├── Spotless check       (falla si el formato no es correcto)  │
+│  ├── PMD main + test      (falla si hay violaciones de reglas)  │
+│  └── Artefacto: pmd-report                                      │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ (solo si calidad pasa)
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
 │  JOB 1: Build & Test                                            │
 │  ├── ./gradlew clean check jacocoTestReport                     │
-│  ├── Cobertura JaCoCo ≥ 80% (falla si no se cumple)            │
-│  ├── Artefacto: jacoco-coverage-report                          │
-│  ├── Artefacto: test-results                                    │
-│  └── Artefacto: cucumber-report                                 │
+│  ├── Cobertura JaCoCo ≥ 80%                                     │
+│  └── Artefactos: jacoco-report, test-results, cucumber-report   │
 └────────────────────┬────────────────────────────────────────────┘
                      │ (solo si tests pasan)
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  JOB 2: Security Analysis                                       │
 │  ├── SonarCloud (SAST) — Quality Gate bloquea si falla         │
-│  │   sonar.qualitygate.wait=true                                │
 │  └── Snyk (SCA) — Bloquea si hay vulnerabilidades HIGH/CRITICAL │
 └────────────────────┬────────────────────────────────────────────┘
                      │ (solo si seguridad pasa)
@@ -454,8 +607,6 @@ El pipeline está dividido en **4 jobs secuenciales** que garantizan trazabilida
 
 ### Secrets requeridos en GitHub
 
-Configurar en **Settings → Secrets and variables → Actions**:
-
 | Secret | Descripción |
 |---|---|
 | `SONAR_TOKEN` | Token de autenticación de SonarCloud |
@@ -464,17 +615,9 @@ Configurar en **Settings → Secrets and variables → Actions**:
 
 > `GITHUB_TOKEN` es generado automáticamente por GitHub Actions.
 
-### Dependabot
-
-El archivo `.github/dependabot.yml` configura actualizaciones automáticas semanales para:
-- Dependencias Gradle (`build.gradle`)
-- Dependencias de GitHub Actions (`.github/workflows/`)
-
 ---
 
 ## Orquestación con Kubernetes
-
-Además de Docker Compose, el proyecto incluye manifiestos Kubernetes en `k8s/` para despliegues en entornos de mayor escala.
 
 ```
 k8s/
@@ -484,43 +627,57 @@ k8s/
 └── secret.yaml       # Plantilla de secrets (NO commitear valores reales)
 ```
 
-### Características del despliegue Kubernetes
-
 - **Alta disponibilidad:** 2 réplicas mínimas con `RollingUpdate` (sin downtime)
 - **Escalabilidad automática:** HPA escala de 2 a 5 pods según carga (CPU > 70%, memoria > 80%)
 - **Seguridad:** usuario no-root, `allowPrivilegeEscalation: false`, capabilities dropeadas
-- **Gestión de secrets:** variables sensibles via `secretKeyRef`
-- **Límites de recursos:** requests y limits definidos para CPU y memoria
-
-### Comandos de despliegue en Kubernetes
 
 ```bash
-# Aplicar todos los manifiestos
 kubectl apply -f k8s/
-
-# Ver estado del despliegue
 kubectl get pods -l app=alumnos-app
 kubectl get hpa alumnos-app-hpa
+```
 
-# Ver logs
-kubectl logs -l app=alumnos-app -f
+---
 
-# Escalar manualmente
-kubectl scale deployment alumnos-app --replicas=3
+## Estructura del proyecto
+
+```
+version00/
+├── .github/
+│   ├── workflows/ci.yml            ← Pipeline CI/CD (5 jobs)
+│   └── dependabot.yml
+├── config/
+│   └── pmd/
+│       └── ruleset.xml             ← Reglas PMD personalizadas
+├── k8s/                            ← Manifiestos Kubernetes
+├── src/
+│   ├── main/java/cl/duocuc/alumnos/
+│   │   ├── domain/                 ← Capa de dominio (núcleo)
+│   │   ├── application/            ← Casos de uso
+│   │   ├── config/                 ← Configuración transversal
+│   │   └── infrastructure/         ← Adaptadores (REST, JPA, config)
+│   └── test/java/cl/duocuc/alumnos/
+│       ├── AlumnoServiceTest.java
+│       ├── config/
+│       ├── contract/
+│       ├── cucumber/
+│       └── infrastructure/
+├── build.gradle                    ← Gradle + plugins de calidad
+├── Dockerfile                      ← Multi-stage build
+├── docker-compose.yml
+└── README.md
 ```
 
 ---
 
 ## Uso de Inteligencia Artificial
 
-Este proyecto utilizó herramientas de IA como apoyo en las siguientes áreas:
-
 | Herramienta | Uso |
 |---|---|
 | Kiro (Amazon) | Generación de código base, configuración de plugins Gradle, estructura de tests |
 | — | Todas las decisiones de arquitectura, justificaciones técnicas y reflexiones son propias del equipo |
 
-> Todo contenido generado con IA fue revisado, validado y adaptado por el equipo. Las reflexiones individuales a continuación son de autoría propia, sin asistencia de IA.
+> Todo contenido generado con IA fue revisado, validado y adaptado por el equipo.
 > Referencia: https://bibliotecas.duoc.cl/ia
 
 ---
@@ -534,53 +691,6 @@ Este proyecto utilizó herramientas de IA como apoyo en las siguientes áreas:
 ### Integrante 2
 
 > *[Escribir aquí la reflexión personal sobre el aprendizaje obtenido en este proyecto: qué fue lo más desafiante, qué conceptos de DevOps quedaron más claros, y cuál fue tu contribución específica al equipo. Mínimo 150 palabras. Sin uso de IA.]*
-
----
-
-## Estructura del proyecto
-
-```
-version00/
-├── src/
-│   ├── main/
-│   │   ├── java/cl/duocuc/alumnos/
-│   │   │   ├── domain/
-│   │   │   ├── application/
-│   │   │   ├── config/
-│   │   │   └── infrastructure/
-│   │   └── resources/
-│   │       ├── application.yml
-│   │       ├── application-dev.yml
-│   │       ├── application-prod.yml
-│   │       └── static/redoc.html
-│   └── test/
-│       ├── java/cl/duocuc/alumnos/
-│       │   ├── AlumnoServiceTest.java
-│       │   ├── DemoApplicationTest.java
-│       │   ├── config/GlobalExceptionHandlerTest.java
-│       │   ├── contract/AlumnoContractBase.java
-│       │   ├── cucumber/
-│       │   │   ├── AlumnoSteps.java
-│       │   │   ├── CucumberRunnerTest.java
-│       │   │   └── CucumberSpringConfiguration.java
-│       │   └── infrastructure/
-│       │       ├── controller/AlumnoControllerTest.java
-│       │       ├── mapper/AlumnoMapperTest.java
-│       │       └── repository/AlumnoRepositoryTest.java
-│       └── resources/
-│           ├── cleanup.sql
-│           ├── features/alumnos.feature
-│           └── contracts/alumnos/
-│               ├── listar_alumnos.groovy
-│               ├── crear_alumno.groovy
-│               └── exportar_csv.groovy
-├── build.gradle
-├── settings.gradle
-├── gradle.properties
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
-```
 
 ---
 

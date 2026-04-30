@@ -1,18 +1,20 @@
 package cl.duocuc.alumnos;
 
-import cl.duocuc.alumnos.application.AlumnoService;
-import cl.duocuc.alumnos.domain.Alumno;
-import cl.duocuc.alumnos.infrastructure.entity.AlumnoEntity;
-import cl.duocuc.alumnos.infrastructure.repository.AlumnoRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import cl.duocuc.alumnos.application.AlumnoService;
+import cl.duocuc.alumnos.domain.Alumno;
+import cl.duocuc.alumnos.infrastructure.entity.AlumnoEntity;
+import cl.duocuc.alumnos.infrastructure.repository.AlumnoRepository;
 
 class AlumnoServiceTest {
 
@@ -33,9 +35,9 @@ class AlumnoServiceTest {
         List<Alumno> result = service.listar();
 
         assertEquals(1, result.size());
-        assertEquals(1L, result.get(0).getId());
-        assertEquals("Juan", result.get(0).getNombre());
-        assertEquals("Pérez", result.get(0).getApellido());
+        assertEquals(1L, result.getFirst().getId());
+        assertEquals("Juan", result.getFirst().getNombre());
+        assertEquals("Pérez", result.getFirst().getApellido());
         verify(repo, times(1)).findAll();
     }
 

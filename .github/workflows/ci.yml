@@ -11,13 +11,59 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/alumnos-app
 
 # ─────────────────────────────────────────────────────────────────────────────
+# JOB 0: CODE QUALITY — OpenRewrite + Spotless + PMD
+# Verifica calidad y formato del código ANTES de compilar o testear.
+# Si falla aquí, el desarrollador debe correr localmente:
+#   ./gradlew rewriteRun spotlessApply   → aplica correcciones automáticas
+#   ./gradlew pmdMain                    → ver violaciones PMD
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  code-quality:
+    name: Code Quality (OpenRewrite + Spotless + PMD)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Dar permisos al gradlew
+        run: chmod +x gradlew
+
+      - name: OpenRewrite — verificar recetas pendientes (dry-run)
+        run: ./gradlew rewriteDryRun -Dnet.bytebuddy.experimental=true
+        # Falla si hay cambios que OpenRewrite aplicaría → el dev debe correr rewriteRun
+
+      - name: Spotless — verificar formato del código
+        run: ./gradlew spotlessCheck
+        # Falla si el código no está formateado → el dev debe correr spotlessApply
+
+      - name: PMD — análisis estático de reglas
+        run: ./gradlew pmdMain pmdTest
+        # Falla si hay violaciones de las reglas definidas en config/pmd/ruleset.xml
+
+      - name: Publicar reporte PMD como artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pmd-report
+          path: build/reports/pmd/
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
 # JOB 1: BUILD & TEST
 # Compila el proyecto, ejecuta todos los tests y verifica cobertura ≥ 80%
 # ─────────────────────────────────────────────────────────────────────────────
-jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    needs: code-quality  # solo corre si la calidad de código pasa
 
     steps:
       - name: Checkout código

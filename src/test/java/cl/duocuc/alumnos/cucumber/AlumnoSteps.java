@@ -1,27 +1,27 @@
 package cl.duocuc.alumnos.cucumber;
 
-import cl.duocuc.alumnos.domain.Alumno;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import cl.duocuc.alumnos.domain.Alumno;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.*;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 public class AlumnoSteps extends CucumberSpringConfiguration {
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+    @Autowired private TestRestTemplate restTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private ObjectMapper objectMapper;
 
     private ResponseEntity<?> lastResponse;
     private Long lastCreatedId;
@@ -41,8 +41,7 @@ public class AlumnoSteps extends CucumberSpringConfiguration {
     @Given("la aplicacion esta en ejecucion")
     public void laAplicacionEstaEnEjecucion() {
         ResponseEntity<String> ping = restTemplate.getForEntity(baseUrl(), String.class);
-        assertTrue(ping.getStatusCode().is2xxSuccessful(),
-                "La aplicacion debe estar corriendo");
+        assertTrue(ping.getStatusCode().is2xxSuccessful(), "La aplicacion debe estar corriendo");
     }
 
     @Given("existe un alumno con nombre {string} y apellido {string}")
@@ -52,7 +51,8 @@ public class AlumnoSteps extends CucumberSpringConfiguration {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Alumno> request = new HttpEntity<>(alumno, headers);
 
-        ResponseEntity<Alumno> response = restTemplate.postForEntity(baseUrl(), request, Alumno.class);
+        ResponseEntity<Alumno> response =
+                restTemplate.postForEntity(baseUrl(), request, Alumno.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         lastCreatedId = response.getBody().getId();
@@ -86,23 +86,20 @@ public class AlumnoSteps extends CucumberSpringConfiguration {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Alumno> request = new HttpEntity<>(alumno, headers);
 
-        lastResponse = restTemplate.exchange(
-                baseUrl() + "/" + lastCreatedId,
-                HttpMethod.PUT,
-                request,
-                Alumno.class
-        );
+        lastResponse =
+                restTemplate.exchange(
+                        baseUrl() + "/" + lastCreatedId, HttpMethod.PUT, request, Alumno.class);
     }
 
     @When("elimino el alumno creado")
     public void eliminoElAlumnoCreado() {
         assertNotNull(lastCreatedId, "Debe existir un alumno creado previamente");
-        lastResponse = restTemplate.exchange(
-                baseUrl() + "/" + lastCreatedId,
-                HttpMethod.DELETE,
-                HttpEntity.EMPTY,
-                Void.class
-        );
+        lastResponse =
+                restTemplate.exchange(
+                        baseUrl() + "/" + lastCreatedId,
+                        HttpMethod.DELETE,
+                        HttpEntity.EMPTY,
+                        Void.class);
     }
 
     @When("exporto los alumnos a CSV")
@@ -139,7 +136,8 @@ public class AlumnoSteps extends CucumberSpringConfiguration {
     public void laListaContieneAlMenos(int cantidad) {
         List<?> body = (List<?>) lastResponse.getBody();
         assertNotNull(body);
-        assertTrue(body.size() >= cantidad,
+        assertTrue(
+                body.size() >= cantidad,
                 "La lista debe tener al menos " + cantidad + " elemento(s)");
     }
 
@@ -155,7 +153,8 @@ public class AlumnoSteps extends CucumberSpringConfiguration {
     public void elCSVContiene(String fragmento) {
         String body = (String) lastResponse.getBody();
         assertNotNull(body);
-        assertTrue(body.contains(fragmento),
+        assertTrue(
+                body.contains(fragmento),
                 "El CSV debe contener: " + fragmento + "\nCSV actual: " + body);
     }
 }

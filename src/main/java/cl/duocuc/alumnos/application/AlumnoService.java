@@ -1,12 +1,12 @@
 package cl.duocuc.alumnos.application;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import cl.duocuc.alumnos.domain.Alumno;
 import cl.duocuc.alumnos.infrastructure.mapper.AlumnoMapper;
 import cl.duocuc.alumnos.infrastructure.repository.AlumnoRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class AlumnoService {
@@ -18,7 +18,7 @@ public class AlumnoService {
     }
 
     public List<Alumno> listar() {
-        return repo.findAll().stream().map(AlumnoMapper::toDomain).collect(Collectors.toList());
+        return repo.findAll().stream().map(AlumnoMapper::toDomain).toList();
     }
 
     public Alumno crear(Alumno a) {

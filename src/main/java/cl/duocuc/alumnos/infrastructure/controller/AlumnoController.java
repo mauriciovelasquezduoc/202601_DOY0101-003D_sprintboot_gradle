@@ -1,13 +1,14 @@
 package cl.duocuc.alumnos.infrastructure.controller;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.web.bind.annotation.*;
+
 import cl.duocuc.alumnos.application.AlumnoService;
 import cl.duocuc.alumnos.domain.Alumno;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/alumnos")
@@ -55,11 +56,10 @@ public class AlumnoController {
     @Operation(summary = "Importar alumnos desde CSV")
     @PostMapping("/import")
     public void importar(@RequestBody String csv) {
-        for (String line : csv.split("\n")) {
-            String[] parts = line.split(",");
-            if (parts.length >= 2) {
-                service.crear(new Alumno(null, parts[0], parts[1]));
-            }
-        }
+        java.util.Arrays.stream(csv.split("\n"))
+                .map(line -> line.split(","))
+                .filter(parts -> parts.length >= 2)
+                .map(parts -> new Alumno(null, parts[0], parts[1]))
+                .forEach(service::crear);
     }
 }

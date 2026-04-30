@@ -1,7 +1,9 @@
 package cl.duocuc.alumnos.infrastructure.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "alumnos")

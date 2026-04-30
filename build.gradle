@@ -5,7 +5,7 @@ plugins {
     id 'jacoco'
     id "org.sonarqube" version "7.1.0.6387"
     id 'info.solidsoft.pitest' version '1.19.0-rc.2'
-    id 'org.springframework.cloud.contract' version '4.2.1'
+    id 'org.springframework.cloud.contract' version '5.0.2'
     // ── Calidad de código ─────────────────────────────────────────────────
     id 'org.openrewrite.rewrite' version '7.32.0'   // arregla código automáticamente
     id 'com.diffplug.spotless' version '7.0.4'       // limpia formato

@@ -46,7 +46,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 
     // Spring Cloud Contract - tests de contrato
-    testImplementation 'org.springframework.cloud:spring-cloud-starter-contract-verifier:4.2.3'
+    testImplementation 'org.springframework.cloud:spring-cloud-starter-contract-verifier:5.0.2'
 }
 
 test {

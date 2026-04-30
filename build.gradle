@@ -41,9 +41,9 @@ dependencies {
     testImplementation 'io.cucumber:cucumber-java:7.20.1'
     testImplementation 'io.cucumber:cucumber-spring:7.20.1'
     testImplementation 'io.cucumber:cucumber-junit-platform-engine:7.20.1'
-    testImplementation 'org.junit.platform:junit-platform-suite:1.11.4'
-    testRuntimeOnly 'org.junit.platform:junit-platform-suite-engine:1.11.4'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+    testImplementation 'org.junit.platform:junit-platform-suite:6.0.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-suite-engine:6.0.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
 
     // Spring Cloud Contract - tests de contrato
     testImplementation 'org.springframework.cloud:spring-cloud-starter-contract-verifier:4.2.3'

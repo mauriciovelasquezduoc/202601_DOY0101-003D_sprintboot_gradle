@@ -49,7 +49,7 @@ jobs:
         # Falla si hay violaciones de las reglas definidas en config/pmd/ruleset.xml
 
       - name: Publicar reporte PMD como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pmd-report
@@ -86,7 +86,7 @@ jobs:
         # check ejecuta: test → jacocoTestReport → jacocoTestCoverageVerification (≥80%)
 
       - name: Publicar reporte contractTest como artefacto (diagnóstico)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: contract-test-report
@@ -94,7 +94,7 @@ jobs:
           retention-days: 7
 
       - name: Publicar reporte de cobertura JaCoCo como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: jacoco-coverage-report
@@ -104,7 +104,7 @@ jobs:
           retention-days: 7
 
       - name: Publicar resultados de tests como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results
@@ -112,7 +112,7 @@ jobs:
           retention-days: 7
 
       - name: Publicar reporte Cucumber como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: cucumber-report
@@ -186,7 +186,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Publicar reporte Snyk como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: snyk-security-report
@@ -313,7 +313,7 @@ jobs:
           echo "Smoke test OK"
 
       - name: Publicar logs del despliegue como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: deploy-logs

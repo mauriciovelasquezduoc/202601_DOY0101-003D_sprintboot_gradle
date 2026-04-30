@@ -2,12 +2,16 @@
 # .gitignore — version00 (Gradle / Spring Boot)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Gradle ────────────────────────────────────────────────────────────────────
-.gradle/
-build/
+# ── Java ──────────────────────────────────────────────────────────────────────
+*.class
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+# Excluir jars compilados pero NO el gradle-wrapper.jar
+*.jar
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
 
 # ── IntelliJ IDEA ─────────────────────────────────────────────────────────────
 .idea/
@@ -57,14 +61,11 @@ $RECYCLE.BIN/
 # ── Linux ─────────────────────────────────────────────────────────────────────
 *~
 
-# ── Java ──────────────────────────────────────────────────────────────────────
-*.class
-*.jar
-*.war
-*.ear
-*.nar
-hs_err_pid*
-replay_pid*
+# ── Gradle ────────────────────────────────────────────────────────────────────
+.gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
 # ── Spring Boot ───────────────────────────────────────────────────────────────
 # Archivos de configuración con secretos (NUNCA commitear)
@@ -108,7 +109,6 @@ build/test-results/
 
 # ── Reportes de seguridad (generados por Snyk/SonarQube) ─────────────────────
 snyk.sarif
-.snyk
 sonar-project.properties.bak
 
 # ── Logs ──────────────────────────────────────────────────────────────────────

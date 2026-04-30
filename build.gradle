@@ -98,8 +98,9 @@ check.dependsOn jacocoTestCoverageVerification
 
 sonar {
     properties {
-        property "sonar.projectKey", "alumnos-app"
-        property "sonar.organization", "demo"
+        // ProjectKey = {github_owner}_{repo_name} — debe coincidir con SonarCloud
+        property "sonar.projectKey", "mauriciovelasquezduoc_202601_DOY0101-003D_sprintboot_gradle"
+        property "sonar.organization", "mauriciovelasquezduoc"
         property "sonar.host.url", "https://sonarcloud.io"
         property "sonar.coverage.jacoco.xmlReportPaths", "${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml"
         // Excluir directorios que no son código fuente
@@ -108,9 +109,6 @@ sonar {
         property "sonar.tests", "src/test/java"
         // Rama de referencia para calcular "nuevo código" (Sonar way usa métricas new_*)
         property "sonar.newCode.referenceBranch", "main"
-        // Quality Gate: el paso sonar espera el resultado antes de continuar el pipeline
-        // Nota: cambiar el Quality Gate en SonarCloud UI a 'alumnos-gate' para evitar
-        // que el gate 'Sonar way' falle por métricas new_* sin rama de referencia.
         property "sonar.qualitygate.wait", "false"
         property "sonar.qualitygate.timeout", "300"
     }

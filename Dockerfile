@@ -19,7 +19,7 @@ COPY src ./src
 RUN gradle clean bootJar -x test --no-daemon
 
 # ── Etapa 2: Runtime ──────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:26_35-jre-jammy
 
 WORKDIR /app
 
